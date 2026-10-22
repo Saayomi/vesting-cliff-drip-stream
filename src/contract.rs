@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// ~1 year at ~5 s/ledger.
-const DRAIN_DELAY_LEDGERS: u32 = 3_153_600;
+pub(crate) const DRAIN_DELAY_LEDGERS: u32 = 6_307_200;
 
 /// Maximum number of segments allowed in a variable-rate stream.
 const MAX_SEGMENTS: u32 = 10;
@@ -1460,12 +1460,14 @@ impl VestingDrips {
             return Err(VestingError::DrainDelayNotExpired);
         }
 
-        let total_deposit = calculate_total_deposit(
-            schedule.rate_per_ledger,
-            schedule.end_ledger - schedule.start_ledger,
-        )
-        .unwrap_or(0);
-        let remaining = total_deposit.saturating_sub(schedule.total_claimed);
+        let duration = schedule.end_ledger
+            .checked_sub(schedule.start_ledger)
+            .ok_or(VestingError::DepositOverflow)?;
+        let total_deposit = calculate_total_deposit(schedule.rate_per_ledger, duration)?;
+        let remaining = total_deposit
+            .checked_sub(schedule.total_claimed)
+            .filter(|amount| *amount >= 0)
+            .ok_or(VestingError::DepositOverflow)?;
 
         let token_client = token::Client::new(&env, &schedule.token);
         let sponsor = schedule.sponsor.clone();

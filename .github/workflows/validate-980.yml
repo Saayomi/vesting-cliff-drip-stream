@@ -30,3 +30,14 @@ jobs:
       - name: Clippy
         if: always()
         run: cargo clippy -p vesting-cliff-drip-stream --all-targets --all-features -- -D warnings
+      - name: Isolated drain regressions
+        if: always()
+        run: |
+          python .github/isolate-980.py
+          cd /tmp/drain-isolated
+          cargo test -- --nocapture
+      - name: Format drain tests
+        if: always()
+        run: |
+          rustfmt --edition 2021 src/tests/test_drain.rs
+          python -c "import base64; print('FORMATTED_DRAIN='+base64.b64encode(open('src/tests/test_drain.rs','rb').read()).decode())"

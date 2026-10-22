@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Drain cleanup (#980)
+
+- Correct the permissionless drain delay to 6,307,200 ledgers and retain checked arithmetic.
+- Append execution ledger to `vc_drain` data: `(caller, sponsor, token, amount, ledger)`.
+  Strict four-field decoders must update before deployment; historical events remain four-field.
+- Preserve public errors: `DrainDelayNotExpired = 9`, `InvalidRecipient = 10`.
+  Issue #980's requested code 10 conflicts with the existing stable API.
+- Operators must maintain or restore schedule, instance/code and token storage before
+  draining after a year. A larger network TTL limit alone does not extend existing entries.
+
+
 ### Added
 
 - Optional stream label (`metadata: Option<String>`) on `VestingSchedule`. Sponsors can attach a human-readable label (e.g. `"Q1 Grant"`) at creation time for off-chain indexing and display. Empty strings are normalised to `None`; values longer than 256 UTF-8 bytes are rejected with `MetadataTooLong` (error code 20). The label is immutable after stream creation. ([#15](https://github.com/AlienScroll78/vesting-cliff-drip-stream/issues/15))

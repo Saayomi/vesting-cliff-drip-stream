@@ -352,7 +352,7 @@ pub fn emit_stream_clawed_back(
 /// Emitted when an expired stream is drained.
 ///
 /// Topics: `["vc_drain", recipient]`
-/// Data:   `(caller, sponsor, token, amount)`
+/// Data:   `(caller, sponsor, token, amount, ledger)`
 pub fn emit_stream_drained(
     env: &Env,
     caller: &Address,
@@ -363,7 +363,7 @@ pub fn emit_stream_drained(
 ) {
     env.events().publish(
         (symbol_short!("vc_drain"), recipient.clone()),
-        (caller.clone(), sponsor.clone(), token.clone(), amount),
+        (caller.clone(), sponsor.clone(), token.clone(), amount, env.ledger().sequence()),
     );
 }
 

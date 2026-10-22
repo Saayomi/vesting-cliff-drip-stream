@@ -273,7 +273,7 @@ Emitted by `drain_expired_stream` when an expired stream is permissionlessly cle
 | topics[0] | `discriminator` | `Symbol` | `"vc_drain"` |
 | topics[1] | `recipient` | `Address` | Drained stream's recipient |
 
-**Data payload** — tuple `(caller, sponsor, token, amount)`:
+**Data payload** — tuple `(caller, sponsor, token, amount, ledger)`:
 
 | Index | Field | XDR Type | Description |
 |-------|-------|----------|-------------|
@@ -281,6 +281,7 @@ Emitted by `drain_expired_stream` when an expired stream is permissionlessly cle
 | 1 | `sponsor` | `Address` | Original sponsor (receives tokens) |
 | 2 | `token` | `Address` | SAC token address |
 | 3 | `amount` | `Int128Parts` | Tokens transferred to sponsor |
+| 4 | `ledger` | `u32` | Ledger at which drain executed |
 
 **Example JSON payload:**
 
@@ -294,7 +295,8 @@ Emitted by `drain_expired_stream` when an expired stream is permissionlessly cle
     "caller":  { "type": "address", "value": "GCALLER..." },
     "sponsor": { "type": "address", "value": "GSPONSOR..." },
     "token":   { "type": "address", "value": "CTOKEN..." },
-    "amount":  { "type": "i128",    "value": "2000" }
+    "amount":  { "type": "i128",    "value": "2000" },
+    "ledger": { "type": "u32", "value": 6307500 }
   }
 }
 ```
@@ -308,6 +310,11 @@ Emitted by `drain_expired_stream` when an expired stream is permissionlessly cle
 ---
 
 ## Lifecycle Events
+
+The trailing ledger is new in #980. Decoders must accept five fields (historical
+events have four); the first four positions and recipient topic are unchanged.
+Zero-balance drains emit the same event with amount zero and no token transfer.
+The caller address is informational and unauthenticated.
 
 ### 6. StreamCompleted
 
