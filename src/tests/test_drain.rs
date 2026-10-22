@@ -13,9 +13,8 @@ use crate::{
 
 use super::super::tests::token_helper::{create_token, mint_to};
 
-/// Advances the ledger by `n` ledgers with a high max_entry_ttl to prevent
-/// persistent storage expiry during long-running drain tests.
-fn setup_env() -> soroban_sdk::Env {
+/// Creates a fixture whose entries stay live throughout the drain delay.
+pub(super) fn setup_env() -> soroban_sdk::Env {
     let env = soroban_sdk::Env::default();
     env.mock_all_auths();
     // Model restored/maintained entries before the year-long ledger jump.
@@ -327,7 +326,7 @@ fn test_drain_fuzz_random_callers_all_succeed() {
 }
 
 // Direct fixtures exercise drain independently of creation/claim entry points.
-fn seed_cleanup_stream(env: &soroban_sdk::Env, claimed: i128) -> (Address, Address, Address, Address) {
+pub(super) fn seed_cleanup_stream(env: &soroban_sdk::Env, claimed: i128) -> (Address, Address, Address, Address) {
     use crate::types::{DataKey, VestingSchedule, CURRENT_SCHEMA_VERSION};
     let contract = env.register(VestingDrips, ());
     let sponsor = Address::generate(env);
@@ -371,7 +370,7 @@ fn test_drain_cleanup_exact_year_event_and_no_auth() {
     env.as_contract(&contract, || {
         assert!(!env.storage().persistent().has(&DataKey::Schedule(recipient.clone())));
         assert!(!env.storage().persistent().has(&DataKey::ScheduleById(recipient.clone(), 0)));
-        assert!(!crate::storage::get_sponsor_streams(&env, &sponsor).contains(&recipient));
+        assert!(!env.storage().persistent().has(&DataKey::SponsorStreams(sponsor.clone())));
     });
     let event = env.events().all().iter().find(|(id, topics, _)|
         *id == contract && topics.first() == Some(soroban_sdk::symbol_short!("vc_drain").into_val(&env))

@@ -30,5 +30,5 @@ for name in functions:
 (out/'src/events.rs').write_text('use soroban_sdk::{Env,Address,symbol_short};'+item(e,'pub fn emit_stream_drained('))
 (out/'src/tests/mod.rs').write_text('pub mod token_helper; mod test_drain;')
 (out/'src/tests/token_helper.rs').write_text((r/'src/tests/token_helper.rs').read_text())
-prefix=tests[:tests.index('/// Advances the ledger')]
-(out/'src/tests/test_drain.rs').write_text(prefix+item(tests,'fn setup_env(')+'\n'+tests[tests.index('// Direct fixtures'):])
+prefix=tests[:tests.index('/// Creates a fixture')]
+(out/'src/tests/test_drain.rs').write_text(prefix+item(tests,'pub(super) fn setup_env(')+'\n'+tests[tests.index('// Direct fixtures'):])

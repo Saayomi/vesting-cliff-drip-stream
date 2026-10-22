@@ -691,8 +691,12 @@ pub fn remove_sponsor_stream(env: &Env, sponsor: &Address, recipient: &Address) 
             new_list.push_back(addr);
         }
     }
-    env.storage().persistent().set(&key, &new_list);
-    bump_persistent(env, &key);
+    if new_list.is_empty() {
+        env.storage().persistent().remove(&key);
+    } else {
+        env.storage().persistent().set(&key, &new_list);
+        bump_persistent(env, &key);
+    }
 }
 
 // ── Reentrancy lock ───────────────────────────────────────────────────────────

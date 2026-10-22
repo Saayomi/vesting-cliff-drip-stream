@@ -554,7 +554,8 @@ fn stream_drained_snapshot() -> serde_json::Value {
             "0": { "type": "Address", "description": "caller address (permissionless)" },
             "1": { "type": "Address", "description": "sponsor address (receives tokens)" },
             "2": { "type": "Address", "description": "token address" },
-            "3": { "type": "i128",    "description": "amount drained to sponsor" }
+            "3": { "type": "i128",    "description": "amount drained to sponsor" },
+            "4": { "type": "u32", "description": "execution ledger" }
         },
         "changelog": []
     })
@@ -562,75 +563,19 @@ fn stream_drained_snapshot() -> serde_json::Value {
 
 #[test]
 fn test_event_snapshot_stream_drained() {
-    use soroban_sdk::testutils::LedgerInfo;
-
-    let env = setup_env();
-    let contract_id = env.register(VestingDrips, ());
+    let env = super::test_drain::setup_env();
+    let (contract_id, sponsor, recipient, token_id) = super::test_drain::seed_cleanup_stream(&env, 0);
     let client = VestingDripsClient::new(&env, &contract_id);
-    let _adm_client = soroban_sdk::Address::generate(&env);
-    let _trs_client = soroban_sdk::Address::generate(&env);
-    client.initialize(&_adm_client, &0u32, &_trs_client);
-let _adm = soroban_sdk::Address::generate(&env);
-let _trs = soroban_sdk::Address::generate(&env);
-client.initialize(&_adm, &0u32, &_trs);
-
-    let sponsor = Address::generate(&env);
-    let recipient = Address::generate(&env);
-    let (token_id, _) = create_token(&env, &sponsor);
-    mint_to(&env, &token_id, &sponsor, 2_000);
-
-    client.create_vesting_stream(&sponsor, &recipient, &token_id, &10, &50, &200, &None);
-
-    // Advance past end_ledger (300) + drain delay (3_153_600)
-    // start=100, so need ledger > 100+200+3_153_600 = 3_153_900
-    env.ledger().set(LedgerInfo {
-        timestamp: 0,
-        protocol_version: 22,
-        sequence_number: 3_153_901,
-        network_id: Default::default(),
-        base_reserve: 10,
-        min_temp_entry_ttl: 100,
-        min_persistent_entry_ttl: 1000,
-        max_entry_ttl: u32::MAX,
-    });
-
     let caller = Address::generate(&env);
-    let drained_amount: i128 = 2_000;
-
+    let ledger = 300 + crate::contract::DRAIN_DELAY_LEDGERS;
+    env.ledger().set_sequence_number(ledger);
+    env.mock_auths(&[]);
     client.drain_expired_stream(&caller, &recipient);
-
-    assert_eq!(
-        env.events().all(),
-        soroban_sdk::vec![
-            &env,
-            // create_vesting_stream
-            (
-                contract_id.clone(),
-                (symbol_short!("vc_create"), recipient.clone()).into_val(&env),
-                (
-                    sponsor.clone(),
-                    token_id.clone(),
-                    10_i128,
-                    100_u32,
-                    150_u32,
-                    300_u32,
-                ).into_val(&env),
-            ),
-            // drain_expired_stream → emit_stream_drained
-            (
-                contract_id.clone(),
-                (symbol_short!("vc_drain"), recipient.clone()).into_val(&env),
-                (
-                    caller.clone(),
-                    sponsor.clone(),
-                    token_id.clone(),
-                    drained_amount,
-                ).into_val(&env),
-            )
-        ],
-        "StreamDrained event schema changed! \
-         Update snapshot with UPDATE_SNAPSHOTS=1 and add a CHANGELOG entry."
-    );
+    let event = env.events().all().iter().find(|(id, topics, _)|
+        *id == contract_id && topics.first() == Some(symbol_short!("vc_drain").into_val(&env))
+    ).unwrap();
+    assert_eq!(event.1, (symbol_short!("vc_drain"), recipient).into_val(&env));
+    assert_eq!(event.2, (caller, sponsor, token_id, 2_000_i128, ledger).into_val(&env));
 
     let expected = stream_drained_snapshot();
     let file = "event_stream_drained.json";
